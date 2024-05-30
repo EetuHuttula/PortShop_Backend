@@ -1,2 +1,2 @@
 # PortShop
- Portshop Repo
+ Backend for webshop application.

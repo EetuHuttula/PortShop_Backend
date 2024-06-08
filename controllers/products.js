@@ -1,7 +1,22 @@
-const productsRouter = require('express').Router()
+const express = require('express');
+const productsRouter = express.Router();
+const multer = require('multer');
+const path = require('path');
 const Product = require('../models/product'); 
 const Category = require('../models/category');
+const mongoose = require('mongoose');
 
+// Multer configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads'); 
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname); 
+  }
+});
+
+const upload = multer({ storage: storage });
 
 productsRouter.get('/', async (request, response) => {
   try {
@@ -25,38 +40,49 @@ productsRouter.get('/:id', async (request, response, next) => {
   }
 });
 
-productsRouter.post('/', async (request, response, next) => {
-  const body = request.body;
+productsRouter.post('/', upload.single('image'), async (req, res, next) => {
+  const { name, description, price, category } = req.body;
+
+  // Validate input fields
+  if (!name) {
+    return res.status(400).json({ error: 'Name is required' });
+  }
+  if (!price) {
+    return res.status(400).json({ error: 'Price is required' });
+  }
+  if (!category) {
+    return res.status(400).json({ error: 'Category is required' });
+  }
+
+  // Validate category ID
+  if (!mongoose.Types.ObjectId.isValid(category)) {
+    return res.status(400).json({ error: 'Invalid category ID' });
+  }
 
   try {
-    const category = await Category.findById(body.category);
-    if (!category) {
-      return response.status(400).json({ error: 'Invalid category' });
-    }
-
-    if (!body.name) {
-      return response.status(400).json({ error: 'Name is required' });
-    }
-    if (!body.price) {
-      return response.status(400).json({ error: 'Price is required' });
+    const categoryExists = await Category.findById(category);
+    if (!categoryExists) {
+      return res.status(400).json({ error: 'Category does not exist' });
     }
 
     const product = new Product({
-      name: body.name,
-      description: body.description,
-      price: body.price,
-      category: body.category,
+      name,
+      description,
+      price,
+      category,
+      image: req.file ? req.file.path : undefined, // Save the file path to the image field
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     });
 
     const savedProduct = await product.save();
-    response.status(201).json(savedProduct);
+    const imageUrl = req.file ? `${req.protocol}://${req.get('host')}/${req.file.path.replace(/\\/g, '/')}` : undefined;
+    res.status(201).json({ ...savedProduct._doc, imageUrl });
   } catch (error) {
+    console.error('Error saving product:', error);
     next(error);
   }
 });
-
 
 productsRouter.delete('/:id', async (request, response, next) => {
   try {
@@ -67,8 +93,7 @@ productsRouter.delete('/:id', async (request, response, next) => {
   }
 });
 
-
-productsRouter.put('/:id', async (request, response, next) => {
+productsRouter.put('/:id', upload.single('image'), async (request, response, next) => {
   const body = request.body;
 
   const product = {
@@ -76,14 +101,28 @@ productsRouter.put('/:id', async (request, response, next) => {
     description: body.description,
     price: body.price,
     category: body.category,
+    image: req.file ? req.file.path : undefined, // Update the image field if a new file is uploaded
     updated_at: new Date()
   };
 
   try {
     const updatedProduct = await Product.findByIdAndUpdate(request.params.id, product, { new: true });
-    response.json(updatedProduct);
+    const imageUrl = req.file ? `${req.protocol}://${req.get('host')}/${req.file.path}` : undefined;
+    response.json({ ...updatedProduct._doc, imageUrl });
   } catch (error) {
     next(error);
+  }
+});
+
+productsRouter.get('/category/:category', async (req, res) => {
+  try {
+    const category = req.params.category;
+    console.log('Category:', category); // Log category for debugging
+    const products = await Product.find({ category }); // Assuming you have a 'category' field in your product schema
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching products by category:', error);
+    res.status(500).json({ message: 'Server Error' });
   }
 });
 

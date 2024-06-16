@@ -1,6 +1,7 @@
 const config = require('./utils/config')
 const express = require('express')
 require('express-async-errors')
+const bodyParser = require('body-parser');
 const app = express()
 const cors = require('cors')
 const middleware = require('./utils/middleware')
@@ -14,6 +15,7 @@ const categoriesRouter = require('./controllers/categories')
 const usersRouter = require('./controllers/users')
 const loginRouter = require('./controllers/login')
 
+app.use(bodyParser.json());
 mongoose.set('strictQuery', false)
 
 logger.info('connecting to', config.MONGODB_URI)

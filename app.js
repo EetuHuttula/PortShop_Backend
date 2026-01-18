@@ -14,6 +14,9 @@ const productsRouter = require('./controllers/products')
 const categoriesRouter = require('./controllers/categories')
 const usersRouter = require('./controllers/users')
 const loginRouter = require('./controllers/login')
+const registerRouter = require('./controllers/register')
+const adminRouter = require('./controllers/admin')
+const ordersRouter = require('./controllers/orders')
 
 app.use(bodyParser.json());
 mongoose.set('strictQuery', false)
@@ -40,7 +43,13 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-app.use(cors())
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
+app.options('*', cors());
 app.use(express.static('dist'))
 app.use(express.json())
 app.use(middleware.requestLogger)
@@ -57,6 +66,9 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/products', productsRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/login', loginRouter);
+app.use('/api/register', registerRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/orders', ordersRouter);
 
 // Endpoint for uploading files
 app.post('/api/upload', upload.single('image'), (req, res) => {

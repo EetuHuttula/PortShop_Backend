@@ -1,11 +1,18 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/user');
+const { verifyToken } = require('../utils/middleware');
 
 const adminRouter = express.Router();
 
-adminRouter.post('/', async (req, res) => {
+// Only authenticated admin users can create new admin accounts
+adminRouter.post('/', verifyToken, async (req, res) => {
     try {
+        const requestingUser = await User.findById(req.user.id);
+        if (!requestingUser || !requestingUser.isAdmin) {
+            return res.status(403).json({ error: 'Only admins can create admin accounts' });
+        }
+
         const { fname, lname, email, password } = req.body;
 
         const userExists = await User.findOne({ email });

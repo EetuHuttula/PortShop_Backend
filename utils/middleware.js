@@ -29,6 +29,28 @@ const userExtractor = (request, response, next) => {
   next()
 }
 
+const verifyToken = (request, response, next) => {
+  const authorization = request.get('authorization')
+  let token = null
+
+  if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
+    token = authorization.substring(7)
+  }
+
+  if (!token) {
+    return response.status(401).json({ error: 'token missing' })
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.SECRET)
+    request.user = decoded
+  } catch (error) {
+    return response.status(401).json({ error: 'token invalid or expired' })
+  }
+
+  next()
+}
+
 const unknownEndpoint = (request, response) => {
   response.status(404).send({ error: 'unknown endpoint' })
 }
@@ -53,6 +75,7 @@ const errorHandler = (error, request, response, next) => {
 module.exports = {
   requestLogger,
   userExtractor,
+  verifyToken,
   unknownEndpoint,
   errorHandler
 }

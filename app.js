@@ -3,6 +3,8 @@ const express = require('express')
 require('express-async-errors')
 const cors = require('cors')
 const mongoose = require('mongoose')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 
 const middleware = require('./utils/middleware')
 const logger = require('./utils/logger')
@@ -24,8 +26,33 @@ mongoose.connect(config.MONGODB_URI)
   .then(() => logger.info('connected to MongoDB'))
   .catch(error => logger.error('error connection to MongoDB:', error.message))
 
+// JSON parsing - with size limit to prevent large payload attacks
+app.use(express.json({ limit: '10mb' }))
+
+// Security headers
+app.use(helmet())
+
+// Rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 attempts per windowMs on auth endpoints
+  message: 'Too many login attempts, please try again later.',
+  skipSuccessfulRequests: true, // don't count successful requests
+})
+
+// Apply general rate limiting to all routes
+app.use(generalLimiter)
+
 // JSON parsing
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
 
 // CORS - rajattu sallittuihin origin:iin
 const allowedOrigins = [
@@ -54,8 +81,8 @@ app.use(middleware.requestLogger)
 app.use('/api/categories', categoriesRouter)
 app.use('/api/products', productsRouter)
 app.use('/api/users', usersRouter)
-app.use('/api/login', loginRouter)
-app.use('/api/register', registerRouter)
+app.use('/api/login', authLimiter, loginRouter)
+app.use('/api/register', authLimiter, registerRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/orders', ordersRouter)
 

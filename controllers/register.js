@@ -2,27 +2,22 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/user');
+const { validateRegistration } = require('../utils/validators');
 const registerRouter = express.Router();
 
 // Registration endpoint
 registerRouter.post('/', async (request, response) => {
   const { fname, lname, email, password } = request.body;
 
-  // Validation
-  if (!email || !password) {
-    return response.status(400).json({ error: 'Email and password are required' });
-  }
-
-  if (!fname || !lname) {
-    return response.status(400).json({ error: 'First name and last name are required' });
-  }
-
-  if (password.length < 8) {
-    return response.status(400).json({ error: 'Password must be at least 8 characters long' });
+  // Comprehensive validation
+  const { isValid, errors } = validateRegistration(fname, lname, email, password);
+  
+  if (!isValid) {
+    return response.status(400).json({ errors });
   }
 
   // Check if user already exists
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email: email.toLowerCase() });
   if (existingUser) {
     return response.status(400).json({ error: 'Email already in use' });
   }
@@ -33,7 +28,7 @@ registerRouter.post('/', async (request, response) => {
   const user = new User({
     fname,
     lname,
-    email,
+    email: email.toLowerCase(),
     isAdmin: false,
     passwordHash,
   });
@@ -56,7 +51,7 @@ registerRouter.post('/', async (request, response) => {
       isAdmin: savedUser.isAdmin
     });
   } catch (error) {
-    response.status(500).json({ error: 'Something went wrong while registering' });
+    response.status(500).json({ error: 'Registration failed' });
   }
 });
 

@@ -32,7 +32,7 @@ app.use(express.json())
 // CORS - rajattu sallittuihin origin:iin
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://portshop-8nduql4fz-eetus-projects-06cd1cd1.vercel.app/'
+  'https://portshop-8nduql4fz-eetus-projects-06cd1cd1.vercel.app'
 ]
 app.use(cors({
   origin: allowedOrigins,

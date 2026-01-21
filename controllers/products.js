@@ -1,21 +1,8 @@
 const express = require('express');
 const productsRouter = express.Router();
-const multer = require('multer');
 const mongoose = require('mongoose');
 const Product = require('../models/product');
 const Category = require('../models/category');
-
-// Multer configuration
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads');
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
-  }
-});
-
-const upload = multer({ storage: storage });
 
 // GET all products
 productsRouter.get('/', async (request, response) => {
@@ -42,7 +29,7 @@ productsRouter.get('/:id', async (request, response, next) => {
 });
 
 // POST a new product
-productsRouter.post('/', upload.single('image'), async (req, res, next) => {
+productsRouter.post('/', async (req, res, next) => {
   const { name, description, price, category } = req.body;
 
   if (!name || !price || !category) {
@@ -64,14 +51,12 @@ productsRouter.post('/', upload.single('image'), async (req, res, next) => {
       description,
       price,
       category,
-      image: req.file ? req.file.path : undefined,
       created_at: new Date(),
       updated_at: new Date()
     });
 
     const savedProduct = await product.save();
-    const imageUrl = req.file ? `${req.protocol}://${req.get('host')}/${req.file.path.replace(/\\/g, '/')}` : undefined;
-    res.status(201).json({ ...savedProduct._doc, imageUrl });
+    res.status(201).json(savedProduct);
   } catch (error) {
     console.error('Error saving product:', error);
     next(error);
@@ -89,7 +74,7 @@ productsRouter.delete('/:id', async (request, response, next) => {
 });
 
 // PUT (update) a product
-productsRouter.put('/:id', upload.single('image'), async (request, response, next) => {
+productsRouter.put('/:id', async (request, response, next) => {
   const body = request.body;
 
   try {
@@ -105,13 +90,11 @@ productsRouter.put('/:id', upload.single('image'), async (request, response, nex
       description: body.description,
       price: body.price,
       category: category._id,
-      image: request.file ? request.file.path : undefined,
       updated_at: new Date()
     };
 
     const updatedProduct = await Product.findByIdAndUpdate(request.params.id, product, { new: true });
-    const imageUrl = request.file ? `${request.protocol}://${request.get('host')}/${request.file.path}` : undefined;
-    response.json({ ...updatedProduct._doc, imageUrl });
+    response.json(updatedProduct);
   } catch (error) {
     next(error);
   }

@@ -20,10 +20,6 @@ const productSchema = new mongoose.Schema({
         ref: 'Category',
         required: true
     },
-    image: {
-        type: String,
-        trim: true
-    },
     created_at: {
         type: Date,
         default: Date.now

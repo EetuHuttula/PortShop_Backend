@@ -3,8 +3,6 @@ const express = require('express')
 require('express-async-errors')
 const cors = require('cors')
 const mongoose = require('mongoose')
-const path = require('path')
-const multer = require('multer')
 
 const middleware = require('./utils/middleware')
 const logger = require('./utils/logger')
@@ -52,16 +50,6 @@ app.use(cors({
 // Middleware
 app.use(middleware.requestLogger)
 
-// Serve uploaded files (note: ephemeral filesystem on Render/Fly.io)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
-
-// Multer setup for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => cb(null, file.originalname)
-})
-const upload = multer({ storage })
-
 // Routes
 app.use('/api/categories', categoriesRouter)
 app.use('/api/products', productsRouter)
@@ -70,11 +58,6 @@ app.use('/api/login', loginRouter)
 app.use('/api/register', registerRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/orders', ordersRouter)
-
-// Endpoint for file uploads
-app.post('/api/upload', upload.single('image'), (req, res) => {
-  res.status(201).send()
-})
 
 // Testing routes (only in test environment)
 if (process.env.NODE_ENV === 'test') {

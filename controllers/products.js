@@ -30,36 +30,54 @@ productsRouter.get('/:id', async (request, response, next) => {
 
 // POST a new product
 productsRouter.post('/', async (req, res, next) => {
-  const { name, description, price, category } = req.body;
+  const { name, description, price, category, categoryId } = req.body;
+  const categoryInput = category || categoryId;
 
-  if (!name || !price || !category) {
+  console.log('POST /products - received body:', { name, description, price, categoryInput });
+
+  if (!name || !price || !categoryInput) {
+    console.log('Validation failed - missing fields');
     return res.status(400).json({ error: 'Name, price, and category are required' });
   }
 
-  if (!mongoose.Types.ObjectId.isValid(category)) {
-    return res.status(400).json({ error: 'Invalid category ID' });
-  }
-
   try {
-    const categoryExists = await Category.findById(category);
-    if (!categoryExists) {
-      return res.status(400).json({ error: 'Category does not exist' });
+    let categoryRecord;
+    
+    console.log('Looking up category:', categoryInput);
+    
+    // Check if input is a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(categoryInput)) {
+      console.log('Input is valid ObjectId, searching by ID');
+      categoryRecord = await Category.findById(categoryInput);
+    } else {
+      // Try to find by category name
+      console.log('Input is not ObjectId, searching by name');
+      categoryRecord = await Category.findOne({ name: categoryInput });
+    }
+
+    console.log('Category lookup result:', categoryRecord);
+
+    if (!categoryRecord) {
+      console.log('Category not found:', categoryInput);
+      return res.status(400).json({ error: `Category "${categoryInput}" does not exist` });
     }
 
     const product = new Product({
       name,
       description,
-      price,
-      category,
+      price: parseFloat(price),
+      category: categoryRecord._id,
       created_at: new Date(),
       updated_at: new Date()
     });
 
+    console.log('Saving product:', product);
     const savedProduct = await product.save();
+    console.log('Product saved successfully:', savedProduct);
     res.status(201).json(savedProduct);
   } catch (error) {
-    console.error('Error saving product:', error);
-    next(error);
+    console.error('Error saving product:', error.message);
+    res.status(400).json({ error: error.message });
   }
 });
 
